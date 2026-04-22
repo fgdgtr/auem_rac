@@ -4,29 +4,78 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AUEM Rack Réception</title>
-    <link rel="stylesheet" href="styles.css">
-    <script src="script.js" defer></script>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .container { display: flex; flex-direction: column; align-items: center; }
+        header { background-color: #4CAF50; color: white; padding: 1rem; width: 100%; text-align: center; }
+        .floor { border: 1px solid #ccc; padding: 1rem; margin: 1rem; width: 80%; }
+        .package { padding: 0.5rem; border-radius: 5px; }
+        .new { background-color: #d4edda; }
+        .aging { background-color: #fff3cd; }
+        .old { background-color: #f8d7da; }
+    </style>
 </head>
 <body>
-    <header>
-        <h1>Welcome to AUEM Rack Réception</h1>
-    </header>
-    <main>
-        <section>
-            <h2>Reception Area</h2>
-            <p>This application helps in managing the reception of AUEM Rack materials.</p>
-        </section>
-        <section>
-            <h3>Features</h3>
-            <ul>
-                <li>Track incoming shipments</li>
-                <li>Manage rack inventory</li>
-                <li>Generate reports</li>
-            </ul>
-        </section>
-    </main>
-    <footer>
-        <p>&copy; 2026 AUEM Rack Réception. All rights reserved.</p>
-    </footer>
+    <div class="container">
+        <header>
+            <h1>AUEM Rack Réception Application</h1>
+        </header>
+        <div id="racks"></div>
+    </div>
+
+    <script>
+        const floors = 4;
+        const racks = Array.from({ length: floors }, () => []);
+        const apiEndpoint = 'https://api.jsonbin.io/v3/b/YOUR_BIN_ID'; // Replace with your JSONBin API
+
+        function renderRacks() {
+            const racksDiv = document.getElementById('racks');
+            racksDiv.innerHTML = '';
+            racks.forEach((floor, index) => {
+                const floorDiv = document.createElement('div');
+                floorDiv.classList.add('floor');
+                floorDiv.innerHTML = `<h2>Floor ${index+1}</h2>`;
+                floor.forEach(package => {
+                    const packageDiv = document.createElement('div');
+                    packageDiv.classList.add('package', getAgeClass(package.age));
+                    packageDiv.innerHTML = 
+                        `<p>Package ID: ${package.id}</p>` +
+                        `<p>Age: ${package.age} days</p>` +
+                        `<p>QR Code: <img src='https://api.qrserver.com/v1/create-qr-code/?data=${package.id}' alt='QR Code'></p>`;
+                    floorDiv.appendChild(packageDiv);
+                });
+                racksDiv.appendChild(floorDiv);
+            });
+        }
+
+        function getAgeClass(age) {
+            if (age < 5) return 'new';
+            if (age < 10) return 'aging';
+            return 'old';
+        }
+
+        async function fetchPackages() {
+            const response = await fetch(apiEndpoint);
+            const data = await response.json();
+            data.packages.forEach(pkg => {
+                racks[pkg.floor - 1].push(pkg);
+            });
+            renderRacks();
+            localStorage.setItem('packages', JSON.stringify(data.packages));
+        }
+
+        window.onload = function() {
+            const storedPackages = localStorage.getItem('packages');
+            if (storedPackages) {
+                const packages = JSON.parse(storedPackages);
+                packages.forEach(pkg => {
+                    racks[pkg.floor - 1].push(pkg);
+                });
+            } else {
+                fetchPackages();
+            }
+            renderRacks();
+        };
+    </script>
 </body>
 </html>
